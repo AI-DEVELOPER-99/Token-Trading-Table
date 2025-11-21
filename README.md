@@ -27,7 +27,7 @@ A pixel-perfect replica of Axiom Trade's token discovery table built with Next.j
 
 ## 📂 Project Structure
 
-\`\`\`
+```plaintext
 axiom-token-table/
 ├── src/
 │   ├── app/                      # Next.js App Router
@@ -38,7 +38,8 @@ axiom-token-table/
 │   │   ├── atoms/               # Base components
 │   │   │   ├── Button.tsx       # Reusable button with variants
 │   │   │   ├── Badge.tsx        # Status badges
-│   │   │   └── Skeleton.tsx     # Loading skeletons
+│   │   │   ├── Skeleton.tsx     # Loading skeletons
+│   │   │   └── Spinner.tsx      # Loading spinner
 │   │   ├── molecules/           # Composite components
 │   │   │   ├── Tooltip.tsx      # Tooltip wrapper
 │   │   │   ├── Popover.tsx      # Popover wrapper
@@ -48,6 +49,7 @@ axiom-token-table/
 │   │       └── TokenTable.tsx   # Main table component
 │   ├── hooks/
 │   │   ├── useTokens.ts         # React Query data fetching
+│   │   ├── useRedux.ts          # Redux hook
 │   │   └── useWebSocket.ts      # WebSocket connection hook
 │   ├── store/
 │   │   ├── index.ts             # Redux store configuration
@@ -65,7 +67,7 @@ axiom-token-table/
 ├── tailwind.config.js          # Tailwind CSS configuration
 ├── next.config.js              # Next.js configuration
 └── README.md
-\`\`\`
+```
 
 ## 🛠️ Tech Stack
 
@@ -88,7 +90,7 @@ axiom-token-table/
 
 ### Installation
 
-\`\`\`bash
+```bash
 # Clone the repository
 git clone <repository-url>
 cd axiom-token-table
@@ -106,19 +108,19 @@ npm run dev
 yarn dev
 # or
 pnpm dev
-\`\`\`
+```
 
 Open [http://localhost:3000](http://localhost:3000) to view the application.
 
 ### Build for Production
 
-\`\`\`bash
+```bash
 # Create optimized production build
 npm run build
 
 # Start production server
 npm start
-\`\`\`
+```
 
 ## 📱 Responsive Breakpoints
 
@@ -192,35 +194,35 @@ Target metrics (Lighthouse scores):
 
 ## 🧪 Testing
 
-\`\`\`bash
+```bash
 # Type checking
 npm run type-check
 
 # Linting
 npm run lint
-\`\`\`
+```
 
 ## 📦 Deployment
 
 ### Vercel (Recommended)
 
-\`\`\`bash
+```bash
 # Install Vercel CLI
 npm i -g vercel
 
 # Deploy
 vercel
-\`\`\`
+```
 
 Or connect your GitHub repository to Vercel for automatic deployments.
 
 ### Environment Variables
 
-Create a \`.env.local\` file for environment-specific configuration:
+Create a `.env.local` file for environment-specific configuration:
 
-\`\`\`env
+```env
 NEXT_PUBLIC_APP_URL=https://your-domain.vercel.app
-\`\`\`
+```
 
 ## 📸 Screenshots
 
@@ -287,9 +289,9 @@ NEXT_PUBLIC_APP_URL=https://your-domain.vercel.app
 This is a portfolio project, but suggestions are welcome!
 
 1. Fork the repository
-2. Create a feature branch (\`git checkout -b feature/amazing-feature\`)
-3. Commit your changes (\`git commit -m 'Add amazing feature'\`)
-4. Push to the branch (\`git push origin feature/amazing-feature\`)
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
 5. Open a Pull Request
 
 ## 📝 License
