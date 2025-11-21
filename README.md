@@ -227,20 +227,20 @@ NEXT_PUBLIC_APP_URL=https://your-domain.vercel.app
 ## 📸 Screenshots
 
 ### Desktop View (1920x1080)
-![Desktop Screenshot]
-(Add screenshot here showing full table with all features)
+![Desktop Screenshot](./screenshots/Desktop.png)
+*Full desktop view showing the complete token table with navigation, filters, and all features*
 
 ### Tablet View (768x1024)
-![Tablet Screenshot]
-(Add screenshot here showing responsive tablet layout)
+![Tablet Screenshot](./screenshots/Tablet.png)
+*Tablet layout with responsive navigation and optimized table display*
 
 ### Mobile View (375x667)
-![Mobile Screenshot]
-(Add screenshot here showing mobile-optimized layout)
+![Mobile Screenshot](./screenshots/Mobile.png)
+*Mobile-optimized layout with stacked filters and touch-friendly interface*
 
-### Mobile View (320x568)
-![Small Mobile Screenshot]
-(Add screenshot here showing minimum width support)
+### Mobile View
+![Small Mobile Screenshot](./screenshots/small_mobile.png)
+*Minimum width support showing compact mobile design at 320px*
 
 ## 🎥 Demo Video
 
@@ -256,8 +256,8 @@ NEXT_PUBLIC_APP_URL=https://your-domain.vercel.app
 
 ## 🔗 Links
 
-- **Live Demo**: [https://axiom-token-table.vercel.app](https://your-deployment-url)
-- **GitHub Repository**: [https://github.com/yourusername/axiom-token-table](https://github.com/your-repo)
+- **Live Demo**: [https://token-trading-table-phi.vercel.app](https://token-trading-table-phi.vercel.app)
+- **GitHub Repository**: [https://github.com/AI-DEVELOPER-99/Token-Trading-Table](https://github.com/AI-DEVELOPER-99/Token-Trading-Table)
 - **Original Design**: [https://axiom.trade/pulse](https://axiom.trade/pulse)
 
 ## 🏗️ Architecture Decisions
