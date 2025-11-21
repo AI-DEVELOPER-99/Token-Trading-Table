@@ -2,13 +2,14 @@
 
 import * as React from 'react';
 import { useSelector } from 'react-redux';
-import { ArrowUpDown, TrendingUp, TrendingDown, Info } from 'lucide-react';
+import { ArrowUpDown, TrendingUp, TrendingDown, ExternalLink, Copy, Check } from 'lucide-react';
 import type { RootState } from '@/store';
 import type { Token, SortableField } from '@/types';
 import { Skeleton } from '@/components/atoms/Skeleton';
 import { Badge } from '@/components/atoms/Badge';
 import { Tooltip } from '@/components/molecules/Tooltip';
 import { Modal } from '@/components/molecules/Modal';
+import { useWebSocket } from '@/hooks/useWebSocket';
 import {
   formatPrice,
   formatNumber,
@@ -24,11 +25,50 @@ interface TokenTableProps {
 }
 
 /**
+ * Sparkline chart component for price trends
+ */
+const Sparkline = ({ trend }: { trend: number }) => {
+  const points = React.useMemo(() => {
+    const data = [];
+    for (let i = 0; i < 20; i++) {
+      data.push(50 + Math.sin(i * 0.5 + trend) * 20 + Math.random() * 10);
+    }
+    return data;
+  }, [trend]);
+
+  const max = Math.max(...points);
+  const min = Math.min(...points);
+  const range = max - min;
+
+  const pathData = points
+    .map((point, i) => {
+      const x = (i / (points.length - 1)) * 100;
+      const y = 100 - ((point - min) / range) * 100;
+      return `${i === 0 ? 'M' : 'L'} ${x},${y}`;
+    })
+    .join(' ');
+
+  return (
+    <svg width="80" height="30" className="opacity-60">
+      <path
+        d={pathData}
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        vectorEffect="non-scaling-stroke"
+      />
+    </svg>
+  );
+};
+
+/**
  * Token row component with animations and interactions
  */
-const TokenRow = React.memo(({ token }: { token: Token }) => {
+const TokenRow = React.memo(({ token, index }: { token: Token; index: number }) => {
   const [modalOpen, setModalOpen] = React.useState(false);
   const [priceClass, setPriceClass] = React.useState('');
+  const [imageError, setImageError] = React.useState(false);
+  const [copied, setCopied] = React.useState(false);
 
   // Animate price changes
   React.useEffect(() => {
@@ -37,75 +77,170 @@ const TokenRow = React.memo(({ token }: { token: Token }) => {
     return () => clearTimeout(timer);
   }, [token.price]);
 
+  // Reset image error state when token changes
+  React.useEffect(() => {
+    setImageError(false);
+  }, [token.id]);
+
   const priceChangeColor = getPriceChangeColor(token.priceChange24h);
+  const isPositive = token.priceChange24h > 0;
+
+  const copyAddress = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    navigator.clipboard.writeText(token.address);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
 
   return (
     <>
-      <tr className="border-b transition-colors hover:bg-muted/50 cursor-pointer">
-        <td className="p-4">
+      <tr
+        className={cn(
+          'border-b border-border/50 transition-all duration-200 cursor-pointer group',
+          'hover:bg-accent/20',
+          isPositive && 'hover:gradient-border'
+        )}
+        onClick={() => setModalOpen(true)}
+        style={{ animationDelay: `${index * 50}ms` }}
+      >
+        {/* Rank */}
+        <td className="p-3 text-muted-foreground text-sm font-medium w-12">
+          {index + 1}
+        </td>
+
+        {/* Token Info */}
+        <td className="p-3">
           <div className="flex items-center gap-3">
-            <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
-              <span className="text-sm font-bold">{token.symbol.charAt(0)}</span>
-            </div>
-            <div>
-              <div className="font-medium">{token.symbol}</div>
-              <div className="text-sm text-muted-foreground">{token.name}</div>
-            </div>
-          </div>
-        </td>
-
-        <td className="p-4">
-          <Tooltip content={`Address: ${token.address.slice(0, 12)}...`}>
-            <Badge variant="outline">{token.chain}</Badge>
-          </Tooltip>
-        </td>
-
-        <td className={cn('p-4 font-mono', priceClass)}>
-          {formatPrice(token.price)}
-        </td>
-
-        <td className={cn('p-4', priceChangeColor)}>
-          <div className="flex items-center gap-1">
-            {token.priceChange24h > 0 ? (
-              <TrendingUp className="h-4 w-4" />
+            {token.profilePic && !imageError ? (
+              <img
+                src={token.profilePic}
+                alt={token.name}
+                className="h-9 w-9 rounded-full object-cover bg-muted ring-2 ring-border"
+                onError={() => setImageError(true)}
+              />
             ) : (
-              <TrendingDown className="h-4 w-4" />
+              <div
+                className="h-9 w-9 rounded-full flex items-center justify-center font-bold text-white text-xs ring-2 ring-border"
+                style={{ backgroundColor: `hsl(${(token.symbol.charCodeAt(0) * 137) % 360}, 65%, 50%)` }}
+              >
+                {token.symbol.slice(0, 2).toUpperCase()}
+              </div>
             )}
-            {formatPercentage(token.priceChange24h)}
+            <div className="min-w-0">
+              <div className="font-semibold text-foreground flex items-center gap-2">
+                {token.symbol}
+                <Badge variant="outline" className="text-xs py-0 px-1.5 h-5">
+                  {token.chain}
+                </Badge>
+              </div>
+              <div className="text-xs text-muted-foreground truncate max-w-[200px]">
+                {token.name}
+              </div>
+            </div>
           </div>
         </td>
 
-        <td className="p-4">${formatNumber(token.volume24h)}</td>
-        
-        <td className="p-4">${formatNumber(token.marketCap)}</td>
+        {/* Price */}
+        <td className={cn('p-3 font-mono text-sm font-medium', priceClass)}>
+          <div className="flex flex-col">
+            <span>{formatPrice(token.price)}</span>
+          </div>
+        </td>
 
-        <td className="p-4">{formatNumber(token.holders, 0)}</td>
+        {/* 24h Change with Sparkline */}
+        <td className={cn('p-3', priceChangeColor)}>
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-1 font-medium text-sm">
+              {isPositive ? (
+                <TrendingUp className="h-3.5 w-3.5" />
+              ) : (
+                <TrendingDown className="h-3.5 w-3.5" />
+              )}
+              {formatPercentage(token.priceChange24h)}
+            </div>
+            <div className={priceChangeColor}>
+              <Sparkline trend={token.priceChange24h} />
+            </div>
+          </div>
+        </td>
 
-        <td className="p-4">
-          <Badge 
+        {/* Volume */}
+        <td className="p-3">
+          <div className="flex flex-col">
+            <span className="text-sm font-medium">${formatNumber(token.volume24h)}</span>
+            <span className="text-xs text-muted-foreground">24h Vol</span>
+          </div>
+        </td>
+
+        {/* Market Cap */}
+        <td className="p-3">
+          <div className="flex flex-col">
+            <span className="text-sm font-medium">${formatNumber(token.marketCap)}</span>
+            <span className="text-xs text-muted-foreground">MCap</span>
+          </div>
+        </td>
+
+        {/* Liquidity */}
+        <td className="p-3">
+          <div className="flex flex-col">
+            <span className="text-sm font-medium">${formatNumber(token.liquidity)}</span>
+            <span className="text-xs text-muted-foreground">Liq</span>
+          </div>
+        </td>
+
+        {/* Holders */}
+        <td className="p-3 text-sm font-medium">
+          {formatNumber(token.holders, 0)}
+        </td>
+
+        {/* Category */}
+        <td className="p-3">
+          <Badge
             variant={
-              token.category === 'new-pairs' 
-                ? 'success' 
-                : token.category === 'final-stretch' 
-                ? 'secondary' 
+              token.category === 'new-pairs'
+                ? 'success'
+                : token.category === 'final-stretch'
+                ? 'secondary'
                 : 'default'
             }
+            className="text-xs font-medium"
           >
             {token.category.replace('-', ' ')}
           </Badge>
         </td>
 
-        <td className="p-4 text-sm text-muted-foreground">
+        {/* Created */}
+        <td className="p-3 text-sm text-muted-foreground">
           {formatTimeAgo(token.createdAt)}
         </td>
 
-        <td className="p-4">
-          <button
-            onClick={() => setModalOpen(true)}
-            className="text-primary hover:text-primary/80 transition-colors"
-          >
-            <Info className="h-5 w-5" />
-          </button>
+        {/* Actions */}
+        <td className="p-3">
+          <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+            <Tooltip content={copied ? "Copied!" : "Copy address"}>
+              <button
+                onClick={copyAddress}
+                className="p-1.5 rounded hover:bg-accent transition-colors"
+              >
+                {copied ? (
+                  <Check className="h-4 w-4 text-success" />
+                ) : (
+                  <Copy className="h-4 w-4 text-muted-foreground" />
+                )}
+              </button>
+            </Tooltip>
+            <Tooltip content="View details">
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setModalOpen(true);
+                }}
+                className="p-1.5 rounded hover:bg-accent transition-colors"
+              >
+                <ExternalLink className="h-4 w-4 text-muted-foreground" />
+              </button>
+            </Tooltip>
+          </div>
         </td>
       </tr>
 
@@ -115,53 +250,51 @@ const TokenRow = React.memo(({ token }: { token: Token }) => {
         title={`${token.name} (${token.symbol})`}
         description={`Detailed information about ${token.symbol}`}
       >
-        <div className="grid gap-4">
+        <div className="grid gap-6">
           <div className="grid grid-cols-2 gap-4">
-            <div>
-              <div className="text-sm text-muted-foreground">Price</div>
-              <div className="text-lg font-bold">{formatPrice(token.price)}</div>
+            <div className="p-4 rounded-lg bg-accent/20 border border-border">
+              <div className="text-sm text-muted-foreground mb-1">Price</div>
+              <div className="text-xl font-bold">{formatPrice(token.price)}</div>
             </div>
-            <div>
-              <div className="text-sm text-muted-foreground">24h Change</div>
-              <div className={cn('text-lg font-bold', priceChangeColor)}>
+            <div className="p-4 rounded-lg bg-accent/20 border border-border">
+              <div className="text-sm text-muted-foreground mb-1">24h Change</div>
+              <div className={cn('text-xl font-bold', priceChangeColor)}>
                 {formatPercentage(token.priceChange24h)}
               </div>
             </div>
-            <div>
-              <div className="text-sm text-muted-foreground">Market Cap</div>
-              <div className="text-lg font-bold">${formatNumber(token.marketCap)}</div>
+            <div className="p-4 rounded-lg bg-accent/20 border border-border">
+              <div className="text-sm text-muted-foreground mb-1">Market Cap</div>
+              <div className="text-xl font-bold">${formatNumber(token.marketCap)}</div>
             </div>
-            <div>
-              <div className="text-sm text-muted-foreground">Volume 24h</div>
-              <div className="text-lg font-bold">${formatNumber(token.volume24h)}</div>
+            <div className="p-4 rounded-lg bg-accent/20 border border-border">
+              <div className="text-sm text-muted-foreground mb-1">Volume 24h</div>
+              <div className="text-xl font-bold">${formatNumber(token.volume24h)}</div>
             </div>
-            <div>
-              <div className="text-sm text-muted-foreground">Liquidity</div>
-              <div className="text-lg font-bold">${formatNumber(token.liquidity)}</div>
+            <div className="p-4 rounded-lg bg-accent/20 border border-border">
+              <div className="text-sm text-muted-foreground mb-1">Liquidity</div>
+              <div className="text-xl font-bold">${formatNumber(token.liquidity)}</div>
             </div>
-            <div>
-              <div className="text-sm text-muted-foreground">Holders</div>
-              <div className="text-lg font-bold">{formatNumber(token.holders, 0)}</div>
+            <div className="p-4 rounded-lg bg-accent/20 border border-border">
+              <div className="text-sm text-muted-foreground mb-1">Holders</div>
+              <div className="text-xl font-bold">{formatNumber(token.holders, 0)}</div>
             </div>
           </div>
-          <div>
-            <div className="text-sm text-muted-foreground">Contract Address</div>
-            <div className="text-sm font-mono break-all">{token.address}</div>
-          </div>
-          {token.migrationProgress && (
-            <div>
-              <div className="text-sm text-muted-foreground mb-2">Migration Progress</div>
-              <div className="w-full bg-muted rounded-full h-2">
-                <div
-                  className="bg-primary h-2 rounded-full transition-all"
-                  style={{ width: `${token.migrationProgress}%` }}
-                />
-              </div>
-              <div className="text-sm text-muted-foreground mt-1">
-                {token.migrationProgress}% complete
-              </div>
+          <div className="p-4 rounded-lg bg-accent/20 border border-border">
+            <div className="text-sm text-muted-foreground mb-2">Contract Address</div>
+            <div className="flex items-center justify-between gap-2">
+              <code className="text-sm font-mono break-all text-foreground">{token.address}</code>
+              <button
+                onClick={copyAddress}
+                className="p-2 rounded hover:bg-accent transition-colors shrink-0"
+              >
+                {copied ? (
+                  <Check className="h-4 w-4 text-success" />
+                ) : (
+                  <Copy className="h-4 w-4" />
+                )}
+              </button>
             </div>
-          )}
+          </div>
         </div>
       </Modal>
     </>
@@ -177,26 +310,29 @@ interface TableHeaderProps {
   label: string;
   field?: SortableField;
   onSort?: (field: SortableField) => void;
+  align?: 'left' | 'right' | 'center';
 }
 
-function TableHeader({ label, field, onSort }: TableHeaderProps) {
+function TableHeader({ label, field, onSort, align = 'left' }: TableHeaderProps) {
   const sort = useSelector((state: RootState) => state.tokens.sort);
   const isSorted = field && sort.field === field;
 
   return (
     <th
       className={cn(
-        'p-4 text-left text-sm font-medium text-muted-foreground',
-        field && 'cursor-pointer hover:text-foreground transition-colors'
+        'p-3 text-sm font-semibold text-muted-foreground uppercase tracking-wider',
+        field && 'cursor-pointer hover:text-foreground transition-colors select-none',
+        align === 'right' && 'text-right',
+        align === 'center' && 'text-center'
       )}
       onClick={() => field && onSort && onSort(field)}
     >
-      <div className="flex items-center gap-2">
+      <div className={cn('flex items-center gap-2', align === 'right' && 'justify-end')}>
         {label}
         {field && (
           <ArrowUpDown
             className={cn(
-              'h-4 w-4 transition-all',
+              'h-3.5 w-3.5 transition-all',
               isSorted && 'text-primary'
             )}
           />
@@ -211,24 +347,26 @@ function TableHeader({ label, field, onSort }: TableHeaderProps) {
  */
 export function TokenTable({ onSort, loading = false }: TokenTableProps) {
   const tokens = useSelector((state: RootState) => state.tokens.filteredTokens);
+  const { isConnected } = useWebSocket(tokens, true);
 
   if (loading) {
     return (
-      <div className="rounded-md border">
+      <div className="rounded-xl border border-border bg-card overflow-hidden">
         <table className="w-full">
           <tbody>
             {Array.from({ length: 10 }).map((_, i) => (
-              <tr key={i} className="border-b">
-                <td className="p-4"><Skeleton height={40} /></td>
-                <td className="p-4"><Skeleton height={24} width={60} /></td>
-                <td className="p-4"><Skeleton height={24} width={80} /></td>
-                <td className="p-4"><Skeleton height={24} width={60} /></td>
-                <td className="p-4"><Skeleton height={24} width={80} /></td>
-                <td className="p-4"><Skeleton height={24} width={80} /></td>
-                <td className="p-4"><Skeleton height={24} width={60} /></td>
-                <td className="p-4"><Skeleton height={24} width={100} /></td>
-                <td className="p-4"><Skeleton height={24} width={60} /></td>
-                <td className="p-4"><Skeleton height={24} width={24} /></td>
+              <tr key={i} className="border-b border-border/50">
+                <td className="p-3"><Skeleton height={20} width={30} /></td>
+                <td className="p-3"><Skeleton height={36} width={150} /></td>
+                <td className="p-3"><Skeleton height={24} width={80} /></td>
+                <td className="p-3"><Skeleton height={24} width={120} /></td>
+                <td className="p-3"><Skeleton height={40} width={100} /></td>
+                <td className="p-3"><Skeleton height={40} width={100} /></td>
+                <td className="p-3"><Skeleton height={40} width={100} /></td>
+                <td className="p-3"><Skeleton height={24} width={60} /></td>
+                <td className="p-3"><Skeleton height={24} width={80} /></td>
+                <td className="p-3"><Skeleton height={24} width={60} /></td>
+                <td className="p-3"><Skeleton height={24} width={60} /></td>
               </tr>
             ))}
           </tbody>
@@ -238,34 +376,43 @@ export function TokenTable({ onSort, loading = false }: TokenTableProps) {
   }
 
   return (
-    <div className="rounded-md border bg-card overflow-x-auto">
-      <table className="w-full">
-        <thead className="border-b bg-muted/50">
-          <tr>
-            <TableHeader label="Token" />
-            <TableHeader label="Chain" />
-            <TableHeader label="Price" field="price" onSort={onSort} />
-            <TableHeader label="24h Change" field="priceChange24h" onSort={onSort} />
-            <TableHeader label="Volume" field="volume24h" onSort={onSort} />
-            <TableHeader label="Market Cap" field="marketCap" onSort={onSort} />
-            <TableHeader label="Holders" field="holders" onSort={onSort} />
-            <TableHeader label="Category" />
-            <TableHeader label="Created" field="createdAt" onSort={onSort} />
-            <TableHeader label="Details" />
-          </tr>
-        </thead>
-        <tbody>
-          {tokens.length === 0 ? (
+    <div className="rounded-xl border border-border bg-card overflow-hidden">
+      {!isConnected && (
+        <div className="px-4 py-2 bg-destructive/10 text-destructive text-sm border-b border-destructive/20">
+          ⚠ Disconnected from live updates
+        </div>
+      )}
+      <div className="overflow-x-auto">
+        <table className="w-full">
+          <thead className="bg-accent/30 border-b border-border">
             <tr>
-              <td colSpan={10} className="p-8 text-center text-muted-foreground">
-                No tokens found
-              </td>
+              <TableHeader label="#" />
+              <TableHeader label="Token" />
+              <TableHeader label="Price" field="price" onSort={onSort} />
+              <TableHeader label="24h Change" field="priceChange24h" onSort={onSort} />
+              <TableHeader label="Volume" field="volume24h" onSort={onSort} />
+              <TableHeader label="Market Cap" field="marketCap" onSort={onSort} />
+              <TableHeader label="Liquidity" />
+              <TableHeader label="Holders" field="holders" onSort={onSort} />
+              <TableHeader label="Category" />
+              <TableHeader label="Created" field="createdAt" onSort={onSort} />
+              <TableHeader label="" />
             </tr>
-          ) : (
-            tokens.map((token) => <TokenRow key={token.id} token={token} />)
-          )}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {tokens.length === 0 ? (
+              <tr>
+                <td colSpan={11} className="p-12 text-center">
+                  <div className="text-muted-foreground text-lg">No tokens found</div>
+                  <div className="text-muted-foreground text-sm mt-2">Try adjusting your filters</div>
+                </td>
+              </tr>
+            ) : (
+              tokens.map((token, index) => <TokenRow key={token.id} token={token} index={index} />)
+            )}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }

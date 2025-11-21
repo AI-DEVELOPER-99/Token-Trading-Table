@@ -14,6 +14,20 @@ const TOKEN_NAMES = [
   'Grape Protocol', 'Green Satoshi', 'STEPN', 'Dust Protocol', 'Star Atlas'
 ];
 
+const PROFILE_PICS = [
+  'https://ui-avatars.com/api/?name=B&background=FF0000&color=fff&size=40',
+  'https://ui-avatars.com/api/?name=W&background=00FF00&color=fff&size=40',
+  'https://ui-avatars.com/api/?name=M&background=0000FF&color=fff&size=40',
+  'https://ui-avatars.com/api/?name=S&background=FFFF00&color=000&size=40',
+  'https://ui-avatars.com/api/?name=O&background=FF00FF&color=fff&size=40',
+  'https://ui-avatars.com/api/?name=R&background=00FFFF&color=000&size=40',
+  'https://ui-avatars.com/api/?name=MN&background=8B00FF&color=fff&size=40',
+  'https://ui-avatars.com/api/?name=C&background=FF8800&color=fff&size=40',
+  'https://ui-avatars.com/api/?name=T&background=88FF00&color=000&size=40',
+  'https://ui-avatars.com/api/?name=P&background=0088FF&color=fff&size=40',
+  'https://ui-avatars.com/api/?name=TEST&background=000000&color=fff&size=40'
+];
+
 /**
  * Generate random price between min and max
  */
@@ -85,6 +99,7 @@ export function generateMockToken(index: number, category: TokenCategory): Token
     migrationDate: category === 'final-stretch' 
       ? new Date(now.getTime() + randomInt(1, 3) * 24 * 60 * 60 * 1000).toISOString()
       : undefined,
+    profilePic: PROFILE_PICS[index % PROFILE_PICS.length],
   };
 }
 

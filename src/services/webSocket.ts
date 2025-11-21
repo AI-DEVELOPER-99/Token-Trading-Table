@@ -53,46 +53,21 @@ export class MockWebSocketService {
    * Start sending mock price updates
    */
   private startPriceUpdates(): void {
-    // Update prices every 2-5 seconds
-    const updateInterval = 2000 + Math.random() * 3000;
-    
+    if (this.intervalId) return;
+
     this.intervalId = setInterval(() => {
-      if (!this.connected) return;
-      
-      // Randomly select 5-15 tokens to update
-      const updateCount = Math.floor(Math.random() * 10) + 5;
-      const updates: PriceUpdate[] = [];
-      
-      for (let i = 0; i < updateCount && i < this.tokens.length; i++) {
-        const randomIndex = Math.floor(Math.random() * this.tokens.length);
-        const token = this.tokens[randomIndex];
-        
-        // Generate realistic price change (-5% to +5%)
-        const priceChangePercent = (Math.random() - 0.5) * 10;
-        const newPrice = token.price * (1 + priceChangePercent / 100);
-        
-        // Generate volume change
-        const volumeChange = (Math.random() - 0.5) * 0.2;
-        const newVolume = token.volume24h * (1 + volumeChange);
-        
-        updates.push({
-          tokenId: token.id,
-          price: Math.max(0.0001, newPrice),
-          priceChange24h: token.priceChange24h + priceChangePercent,
-          volume24h: Math.max(0, newVolume),
-          timestamp: Date.now(),
-        });
-      }
-      
-      // Notify all subscribers
-      this.callbacks.forEach(callback => {
-        try {
-          callback(updates);
-        } catch (error) {
-          console.error('Error in WebSocket callback:', error);
-        }
-      });
-    }, updateInterval);
+      if (!this.connected || this.tokens.length === 0) return;
+
+      const updates: PriceUpdate[] = this.tokens.map((token) => ({
+        tokenId: token.id,
+        price: token.price * (1 + (Math.random() - 0.5) * 0.01), // Simulate small price changes
+        priceChange24h: token.priceChange24h + (Math.random() - 0.5) * 2,
+        volume24h: token.volume24h * (1 + (Math.random() - 0.5) * 0.05),
+        timestamp: Date.now(),
+      }));
+
+      this.callbacks.forEach((callback) => callback(updates));
+    }, 2000); // Send updates every 2 seconds
   }
 
   /**

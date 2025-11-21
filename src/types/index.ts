@@ -20,6 +20,7 @@ export interface Token {
   verified: boolean;
   migrationProgress?: number; // 0-100 for Final Stretch
   migrationDate?: string;
+  profilePic?: string; // URL for the token's profile picture
 }
 
 /**
