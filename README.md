@@ -298,13 +298,6 @@ This is a portfolio project, but suggestions are welcome!
 
 This project is created for educational/portfolio purposes.
 
-## 👨‍💻 Author
-
-**Your Name**
-- GitHub: [@yourusername](https://github.com/yourusername)
-- LinkedIn: [Your Profile](https://linkedin.com/in/yourprofile)
-- Email: your.email@example.com
-
 ## 🙏 Acknowledgments
 
 - Design inspiration from [Axiom Trade](https://axiom.trade)
